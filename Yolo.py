@@ -11,8 +11,8 @@ import shutil
 
 def Preprocess_data():
     # Đường dẫn đến train.txt của Part A và Part B
-    train_a_path = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A\ImageSets\Main\train.txt"
-    train_b_path = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_B\ImageSets\Main\train.txt"
+    train_a_path = r"SCUT_HEAD_Part_A\ImageSets\Main\train.txt"
+    train_b_path = r"SCUT_HEAD_Part_B\ImageSets\Main\train.txt"
 
     # Đọc danh sách ảnh
     with open(train_a_path, "r") as f:
@@ -26,24 +26,24 @@ def Preprocess_data():
     all_train_images.sort()  # Sắp xếp
 
     # Đường dẫn thư mục cần tạo
-    output_train_dir = "F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\ImageSets\Main"
+    output_train_dir = "SCUT_HEAD_Part_A_&_B\ImageSets\Main"
     # Tạo thư mục nếu chưa tồn tại
     os.makedirs(output_train_dir, exist_ok=True)
     # Lưu vào file mới
-    output_train_path = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\ImageSets\Main\train.txt"
+    output_train_path = r"SCUT_HEAD_Part_A_&_B\ImageSets\Main\train.txt"
     with open(output_train_path, "w") as f:
         f.writelines(all_train_images)
     print(f"Gộp xong tập train tại: {output_train_path}")
 
     # Thư mục Part A và Part B
-    images_a_dir = "F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A\JPEGImages"
-    images_b_dir = "F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_B\JPEGImages"
-    annotations_a_dir = "F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A\Annotations"
-    annotations_b_dir = "F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_B\Annotations"
+    images_a_dir = "SCUT_HEAD_Part_A\JPEGImages"
+    images_b_dir = "SCUT_HEAD_Part_B\JPEGImages"
+    annotations_a_dir = "SCUT_HEAD_Part_A\Annotations"
+    annotations_b_dir = "SCUT_HEAD_Part_B\Annotations"
 
     # Thư mục chung
-    combined_images_dir = "F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\JPEGImages"
-    combined_annotations_dir = "F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\Annotations"
+    combined_images_dir = "SCUT_HEAD_Part_A_&_B\JPEGImages"
+    combined_annotations_dir = "SCUT_HEAD_Part_A_&_B\Annotations"
     os.makedirs(combined_images_dir, exist_ok=True)
     os.makedirs(combined_annotations_dir, exist_ok=True)
 
@@ -65,10 +65,10 @@ def Preprocess_data():
 
 
     # Đường dẫn đến val.txt của Part A và Part B
-    val_a_path = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A\ImageSets\Main\val.txt"
-    val_b_path = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_B\ImageSets\Main\val.txt"
+    val_a_path = r"SCUT_HEAD_Part_A\ImageSets\Main\val.txt"
+    val_b_path = r"SCUT_HEAD_Part_B\ImageSets\Main\val.txt"
     # Đường dẫn thư mục val.txt
-    output_val_dir = "F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\ImageSets\Main"
+    output_val_dir = "SCUT_HEAD_Part_A_&_B\ImageSets\Main"
     # Tạo thư mục nếu chưa tồn tại
     os.makedirs(output_val_dir, exist_ok=True)
     # Đọc danh sách ảnh
@@ -84,7 +84,7 @@ def Preprocess_data():
     all_val_images.sort()  # Sắp xếp
 
     # Lưu vào file mới
-    output_val_path = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\ImageSets\Main\val.txt"
+    output_val_path = r"SCUT_HEAD_Part_A_&_B\ImageSets\Main\val.txt"
     with open(output_val_path, "w") as f:
         f.writelines(all_val_images)
 
@@ -149,11 +149,11 @@ def Preprocess_data():
                     f.write(f"{class_id} {x_center:.6f} {y_center:.6f} {box_width:.6f} {box_height:.6f}\n")
 
         print(f"Đã chuyển đổi XML sang YOLO TXT và lưu tại: {output_dir}")
-    train = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\ImageSets\Main\train.txt"
-    val = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\ImageSets\Main\val.txt"
+    train = r"SCUT_HEAD_Part_A_&_B\ImageSets\Main\train.txt"
+    val = r"SCUT_HEAD_Part_A_&_B\ImageSets\Main\val.txt"
     # Đường dẫn tới thư mục XML và thư mục lưu TXT
-    annotation = "F:\TaiLieuDoAn\Yolo\Yolo\SCUT_HEAD_Part_A_&_B\Annotations"
-    output_dir = "F:\TaiLieuDoAn\Yolo\Yolo\SCUT_HEAD_Part_A_&_B\labels"
+    annotation = "SCUT_HEAD_Part_A_&_B\Annotations"
+    output_dir = "SCUT_HEAD_Part_A_&_B\labels"
     classes = ["person"]  # Danh sách các lớp (ví dụ: chỉ có lớp 'person')
     # Chuyển đổi
     convert_xml_to_yolo(annotation, output_dir, classes)
@@ -170,10 +170,10 @@ def Preprocess_data():
 
     # Danh sách các thư mục cần tạo
     dirs = [
-        r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_DATASET\images\train",
-        r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_DATASET\images\val",
-        r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_DATASET\labels\train",
-        r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_DATASET\labels\val"
+        r"SCUT_HEAD_DATASET\images\train",
+        r"SCUT_HEAD_DATASET\images\val",
+        r"SCUT_HEAD_DATASET\labels\train",
+        r"SCUT_HEAD_DATASET\labels\val"
     ]
 
     # Tạo các thư mục nếu chưa tồn tại
@@ -183,14 +183,14 @@ def Preprocess_data():
 
 
     # Đường dẫn dữ liệu gốc
-    image_dir = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\JPEGImages"
-    label_dir = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\labels"
+    image_dir = r"SCUT_HEAD_Part_A_&_B\JPEGImages"
+    label_dir = r"SCUT_HEAD_Part_A_&_B\labels"
 
     # Đường dẫn thư mục đích
-    output_image_train = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_DATASET\images\train"
-    output_image_val = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_DATASET\images\val"
-    output_label_train = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_DATASET\labels\train"
-    output_label_val = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_DATASET\labels\val"
+    output_image_train = r"SCUT_HEAD_DATASET\images\train"
+    output_image_val = r"SCUT_HEAD_DATASET\images\val"
+    output_label_train = r"SCUT_HEAD_DATASET\labels\train"
+    output_label_val = r"SCUT_HEAD_DATASET\labels\val"
 
     # Tạo thư mục đích nếu chưa tồn tại
     os.makedirs(output_image_train, exist_ok=True)
@@ -199,8 +199,8 @@ def Preprocess_data():
     os.makedirs(output_label_val, exist_ok=True)
 
     # Danh sách file train và val
-    train_txt = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\ImageSets\Main\train.txt"
-    val_txt = r"F:\TaiLieuDoAn\Yolo\SCUT_HEAD_Part_A_&_B\ImageSets\Main\val.txt"
+    train_txt = r"SCUT_HEAD_Part_A_&_B\ImageSets\Main\train.txt"
+    val_txt = r"SCUT_HEAD_Part_A_&_B\ImageSets\Main\val.txt"
 
     # Hàm xử lý việc di chuyển file
     def move_files(file_list, image_output_dir, label_output_dir):
@@ -335,7 +335,7 @@ def main():
 
     # Dự đoán trên dữ liệu test
     results = model.predict(
-        source="F:\\TaiLieuDoAn\\Yolo\\SCUT_HEAD_Part_A\\JPEGImages\\PartA_00000.jpg",  # Thư mục chứa ảnh test
+        source="SCUT_HEAD_Part_A\\JPEGImages\\PartA_00000.jpg",  # Thư mục chứa ảnh test
         save=True,  # Lưu kết quả
         imgsz=640,  # Kích thước ảnh
         conf=0.5  # Ngưỡng confidence
@@ -360,7 +360,7 @@ def train():
 
     # Huấn luyện mô hình
     model.train(
-        data="F:\\TaiLieuDoAn\\Yolo\\data.yaml",  # Đường dẫn tới file data.yaml
+        data="data.yaml",  # Đường dẫn tới file data.yaml
         epochs=50,  # Số epoch
         imgsz=640,  # Kích thước ảnh
         batch=16,  # Batch size
@@ -368,7 +368,7 @@ def train():
     )
 
     # Kiểm tra mô hình sau khi huấn luyện
-    metrics = model.val(data="F:\\TaiLieuDoAn\\Yolo\\data.yaml", imgsz=640)
+    metrics = model.val(data="data.yaml", imgsz=640)
 
 if __name__ == "__main__":
     main()
