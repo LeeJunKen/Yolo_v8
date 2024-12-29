@@ -252,82 +252,81 @@ def Preprocess_data():
     with open(val_txt, "w") as f:
         f.writelines([file + "\n" for file in val_files if file not in missing_val_files])
 
-    def check_dataset_split(train_txt, val_txt, image_dir, label_dir):
-        """
-        Kiểm tra số lượng ảnh và nhãn trong tập train và val.
+def check_dataset_split(train_txt, val_txt, image_dir, label_dir):
+    """
+    Kiểm tra số lượng ảnh và nhãn trong tập train và val.
 
-        Args:
-            train_txt (str): Đường dẫn tới file train.txt.
-            val_txt (str): Đường dẫn tới file val.txt.
-            image_dir (str): Thư mục chứa ảnh gốc.
-            label_dir (str): Thư mục chứa nhãn gốc.
+    Args:
+        train_txt (str): Đường dẫn tới file train.txt.
+        val_txt (str): Đường dẫn tới file val.txt.
+        image_dir (str): Thư mục chứa ảnh gốc.
+        label_dir (str): Thư mục chứa nhãn gốc.
 
-        Returns:
-            None. In ra thông tin về số lượng tập train và val.
-        """
-        # Đọc danh sách file từ train.txt
-        with open(train_txt, "r") as f:
-            train_files = [line.strip() for line in f.readlines()]
+    Returns:
+        None. In ra thông tin về số lượng tập train và val.
+    """
+    # Đọc danh sách file từ train.txt
+    with open(train_txt, "r") as f:
+        train_files = [line.strip() for line in f.readlines()]
 
-        # Đọc danh sách file từ val.txt
-        with open(val_txt, "r") as f:
-            val_files = [line.strip() for line in f.readlines()]
+    # Đọc danh sách file từ val.txt
+    with open(val_txt, "r") as f:
+        val_files = [line.strip() for line in f.readlines()]
 
-        # Kiểm tra sự tồn tại của file ảnh và nhãn trong tập train
-        missing_train_images = []
-        missing_train_labels = []
-        for file in train_files:
-            img_path = os.path.join(image_dir, file + ".jpg")
-            label_path = os.path.join(label_dir, file + ".txt")
-            if not os.path.exists(img_path):
-                missing_train_images.append(file)
-            if not os.path.exists(label_path):
-                missing_train_labels.append(file)
+    # Kiểm tra sự tồn tại của file ảnh và nhãn trong tập train
+    missing_train_images = []
+    missing_train_labels = []
+    for file in train_files:
+        img_path = os.path.join(image_dir, file + ".jpg")
+        label_path = os.path.join(label_dir, file + ".txt")
+        if not os.path.exists(img_path):
+            missing_train_images.append(file)
+        if not os.path.exists(label_path):
+            missing_train_labels.append(file)
 
-        # Kiểm tra sự tồn tại của file ảnh và nhãn trong tập val
-        missing_val_images = []
-        missing_val_labels = []
-        for file in val_files:
-            img_path = os.path.join(image_dir, file + ".jpg")
-            label_path = os.path.join(label_dir, file + ".txt")
-            if not os.path.exists(img_path):
-                missing_val_images.append(file)
-            if not os.path.exists(label_path):
-                missing_val_labels.append(file)
+    # Kiểm tra sự tồn tại của file ảnh và nhãn trong tập val
+    missing_val_images = []
+    missing_val_labels = []
+    for file in val_files:
+        img_path = os.path.join(image_dir, file + ".jpg")
+        label_path = os.path.join(label_dir, file + ".txt")
+        if not os.path.exists(img_path):
+            missing_val_images.append(file)
+        if not os.path.exists(label_path):
+            missing_val_labels.append(file)
 
-        # Kết quả
-        print(f"Số lượng file trong train.txt: {len(train_files)}")
-        print(f"Số lượng file trong val.txt: {len(val_files)}")
-        print(f"Số lượng file ảnh thiếu trong tập train: {len(missing_train_images)}")
-        print(f"Số lượng file nhãn thiếu trong tập train: {len(missing_train_labels)}")
-        print(f"Số lượng file ảnh thiếu trong tập val: {len(missing_val_images)}")
-        print(f"Số lượng file nhãn thiếu trong tập val: {len(missing_val_labels)}")
+    # Kết quả
+    print(f"Số lượng file trong train.txt: {len(train_files)}")
+    print(f"Số lượng file trong val.txt: {len(val_files)}")
+    print(f"Số lượng file ảnh thiếu trong tập train: {len(missing_train_images)}")
+    print(f"Số lượng file nhãn thiếu trong tập train: {len(missing_train_labels)}")
+    print(f"Số lượng file ảnh thiếu trong tập val: {len(missing_val_images)}")
+    print(f"Số lượng file nhãn thiếu trong tập val: {len(missing_val_labels)}")
 
-        # In danh sách file thiếu nếu có
-        if missing_train_images:
-            print("\nDanh sách ảnh bị thiếu trong tập train:")
-            for file in missing_train_images:
-                print(file)
+    # In danh sách file thiếu nếu có
+    if missing_train_images:
+        print("\nDanh sách ảnh bị thiếu trong tập train:")
+        for file in missing_train_images:
+            print(file)
 
-        if missing_train_labels:
-            print("\nDanh sách nhãn bị thiếu trong tập train:")
-            for file in missing_train_labels:
-                print(file)
+    if missing_train_labels:
+        print("\nDanh sách nhãn bị thiếu trong tập train:")
+        for file in missing_train_labels:
+            print(file)
 
-        if missing_val_images:
-            print("\nDanh sách ảnh bị thiếu trong tập val:")
-            for file in missing_val_images:
-                print(file)
+    if missing_val_images:
+        print("\nDanh sách ảnh bị thiếu trong tập val:")
+        for file in missing_val_images:
+            print(file)
 
-        if missing_val_labels:
-            print("\nDanh sách nhãn bị thiếu trong tập val:")
-            for file in missing_val_labels:
-                print(file)
+    if missing_val_labels:
+        print("\nDanh sách nhãn bị thiếu trong tập val:")
+        for file in missing_val_labels:
+            print(file)
 
-        print("\nKiểm tra hoàn tất!")
+    print("\nKiểm tra hoàn tất!")
 
 
-    check_dataset_split(train_txt, val_txt, image_dir, label_dir)
 
 def main():
     # Load mô hình đã huấn luyện
@@ -336,7 +335,7 @@ def main():
     # Dự đoán trên dữ liệu test
     results = model.predict(
         source="SCUT_HEAD_Part_A\\JPEGImages\\PartA_00000.jpg",  # Thư mục chứa ảnh test
-        save=True,  # Lưu kết quả
+        save=False,  # Lưu kết quả
         imgsz=640,  # Kích thước ảnh
         conf=0.5  # Ngưỡng confidence
     )
@@ -371,6 +370,11 @@ def train():
     metrics = model.val(data="data.yaml", imgsz=640)
 
 if __name__ == "__main__":
+    # train_txt = r"F:\TaiLieuDoAn\Yolo_v8\SCUT_HEAD_Part_A_&_B\ImageSets\Main\train.txt"
+    # val_txt = r"F:\TaiLieuDoAn\Yolo_v8\SCUT_HEAD_Part_A_&_B\ImageSets\Main\val.txt"
+    # image_dir = r"F:\TaiLieuDoAn\Yolo_v8\SCUT_HEAD_Part_A_&_B\JPEGImages"
+    # label_dir = r"F:\TaiLieuDoAn\Yolo_v8\SCUT_HEAD_Part_A_&_B\labels"
+    # check_dataset_split(train_txt, val_txt, image_dir, label_dir)
     main()
 
 
