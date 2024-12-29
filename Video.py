@@ -28,6 +28,7 @@ def draw_boxes(image, boxes, scores, labels, conf_threshold=0.25):
 
 
 model = YOLO("runs/detect/train5/weights/best.pt")  # Đường dẫn tới trọng số đã huấn luyện
+# print(model.val())
 # results = model.predict(
 #         source="SCUT_HEAD_Part_A\\JPEGImages\\PartA_00000.jpg",
 #         save=False,
@@ -69,12 +70,10 @@ while True:
     if elapsed >= 1.0:  # đủ 1 giây
         fps = frame_count / elapsed
         # print(f"FPS: {fps:.2f}")
-
-        # Reset
         frame_count = 0
         start_time = time.time()
     frame_out = draw_boxes(frame, boxes, scores, labels, conf_threshold=0.3)
-    cv2.putText(frame, f"FPS: {round(fps,3)}", (10, height-10), cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 2)
+    cv2.putText(frame, f"FPS: {fps:.3f}", (10, height-10), cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 2)
     cv2.imshow("Frame", frame_out)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
