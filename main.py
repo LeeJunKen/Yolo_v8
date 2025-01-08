@@ -114,7 +114,7 @@ def process_frame_with_hungarian(frame):
 
     return list(zip(current_ids, face_boxes))
 
-cap = cv2.VideoCapture("video/test.mp4")  # Đọc video
+cap = cv2.VideoCapture("video/output_video.mp4")  # Đọc video
 
 while True:
     ret, frame = cap.read()
