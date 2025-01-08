@@ -39,44 +39,45 @@ model = YOLO("runs/detect/train5/weights/best.pt")  # Đường dẫn tới tr�
 # print(results)
     # Dự đoán trên dữ liệu test
 
-start_time = time.time()
-frame_count = 0
-cap = cv2.VideoCapture(r"E:\DoAn\Data\test.mp4")
-fps=0
-# #
-while True:
-    ret, frame = cap.read()
+def predict_Video(path):
+    start_time = time.time()
+    frame_count = 0
+    cap = cv2.VideoCapture(path)
+    fps = 0
+    # #
+    while True:
+        ret, frame = cap.read()
 
-    if not ret:
-        break
-    results = model.predict(
-        source=frame,
-        save=False,
-        imgsz=640,
-        conf=0.5
-    )
+        if not ret:
+            break
+        results = model.predict(
+            source=frame,
+            save=False,
+            imgsz=640,
+            conf=0.5
+        )
 
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    boxes = results[0].boxes.xyxy.cpu().numpy()
-    scores = results[0].boxes.conf.cpu().numpy()
-    labels = results[0].boxes.cls.cpu().numpy()
+        boxes = results[0].boxes.xyxy.cpu().numpy()
+        scores = results[0].boxes.conf.cpu().numpy()
+        labels = results[0].boxes.cls.cpu().numpy()
 
-    frame_count += 1
+        frame_count += 1
 
-    # Tính FPS cứ mỗi 1 giây
-    elapsed = time.time() - start_time
-    if elapsed >= 1.0:  # đủ 1 giây
-        fps = frame_count / elapsed
-        # print(f"FPS: {fps:.2f}")
-        frame_count = 0
-        start_time = time.time()
-    frame_out = draw_boxes(frame, boxes, scores, labels, conf_threshold=0.3)
-    cv2.putText(frame, f"FPS: {fps:.3f}", (10, height-10), cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 2)
-    cv2.imshow("Frame", frame_out)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-#
-cap.release()
-cv2.destroyAllWindows()
+        # Tính FPS cứ mỗi 1 giây
+        elapsed = time.time() - start_time
+        if elapsed >= 1.0:  # đủ 1 giây
+            fps = frame_count / elapsed
+            # print(f"FPS: {fps:.2f}")
+            frame_count = 0
+            start_time = time.time()
+        frame_out = draw_boxes(frame, boxes, scores, labels, conf_threshold=0.3)
+        cv2.putText(frame, f"FPS: {fps:.3f}", (10, height - 10), cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 2)
+        cv2.imshow("Frame", frame_out)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    #
+    cap.release()
+    cv2.destroyAllWindows()
