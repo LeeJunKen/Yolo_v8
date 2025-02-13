@@ -1,12 +1,8 @@
 import cv2
-import torch
 import os
 from ultralytics import YOLO
 import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
-from PIL import Image
-import numpy as np
-import pandas as pd
 import shutil
 
 def Preprocess_data():
