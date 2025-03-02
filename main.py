@@ -3,6 +3,7 @@ from ultralytics import YOLO
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+
 # Load model YOLO
 model = YOLO("runs/detect/train5/weights/best.pt")
 cap = cv2.VideoCapture("video/test.mp4")
@@ -114,6 +115,7 @@ def process_frame(frame):
     previous_histograms = current_histograms
     previous_ids = ids
     return list(zip(ids, boxes))
+
 
 
 # Vòng lặp xử lý video
