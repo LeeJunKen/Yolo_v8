@@ -8,9 +8,13 @@ from . import kalman_filter
 INFTY_COST = 1e+5
 
 
+import numpy as np
+from scipy.optimize import linear_sum_assignment
+
 def min_cost_matching(
-        distance_metric, max_distance, tracks, detections, track_indices=None,
-        detection_indices=None):
+    distance_metric, max_distance, tracks, detections,
+    track_indices=None, detection_indices=None
+):
     """Solve linear assignment problem.
 
     Parameters
@@ -19,8 +23,7 @@ def min_cost_matching(
         The distance metric is given a list of tracks and detections as well as
         a list of N track indices and M detection indices. The metric should
         return the NxM dimensional cost matrix, where element (i, j) is the
-        association cost between the i-th track in the given track indices and
-        the j-th detection in the given detection_indices.
+        association cost between the i-th track and the j-th detection.
     max_distance : float
         Gating threshold. Associations with cost larger than this value are
         disregarded.
@@ -30,49 +33,73 @@ def min_cost_matching(
         A list of detections at the current time step.
     track_indices : List[int]
         List of track indices that maps rows in `cost_matrix` to tracks in
-        `tracks` (see description above).
+        `tracks`.
     detection_indices : List[int]
         List of detection indices that maps columns in `cost_matrix` to
-        detections in `detections` (see description above).
+        detections in `detections`.
 
     Returns
     -------
     (List[(int, int)], List[int], List[int])
-        Returns a tuple with the following three entries:
-        * A list of matched track and detection indices.
-        * A list of unmatched track indices.
-        * A list of unmatched detection indices.
-
+        A tuple with:
+         - A list of matched (track_idx, detection_idx).
+         - A list of unmatched track indices.
+         - A list of unmatched detection indices.
     """
     if track_indices is None:
         track_indices = np.arange(len(tracks))
     if detection_indices is None:
         detection_indices = np.arange(len(detections))
 
+    # Nếu không có track/detection nào => không ghép
     if len(detection_indices) == 0 or len(track_indices) == 0:
-        return [], track_indices, detection_indices  # Nothing to match.
+        return [], track_indices, detection_indices
 
-    cost_matrix = distance_metric(
-        tracks, detections, track_indices, detection_indices)
+    # Tính toán ma trận chi phí
+    cost_matrix = distance_metric(tracks, detections, track_indices, detection_indices)
+
+    # (1) Kiểm tra NaN hoặc Inf
+    if not np.all(np.isfinite(cost_matrix)):
+        print("[WARNING] cost_matrix contains NaN or Inf. "
+              "Those values will be replaced by a large number to avoid errors.")
+        # Có thể thay thế chúng bằng 1 giá trị lớn hơn max_distance
+        # hoặc bạn có thể hủy ghép cặp tùy logic
+        cost_matrix[~np.isfinite(cost_matrix)] = max_distance + 1e5
+
+    # (2) Áp ngưỡng cho chi phí
     cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
+
+    # (3) Gọi Hungarian (linear_sum_assignment)
     indices = np.asarray(linear_sum_assignment(cost_matrix)).T
 
-    matches, unmatched_tracks, unmatched_detections = [], [], []
+    # Tạo danh sách kết quả
+    matches = []
+    unmatched_tracks = []
+    unmatched_detections = []
+
+    # Xác định detection nào chưa được gán
     for col, detection_idx in enumerate(detection_indices):
         if col not in indices[:, 1]:
             unmatched_detections.append(detection_idx)
+
+    # Xác định track nào chưa được gán
     for row, track_idx in enumerate(track_indices):
         if row not in indices[:, 0]:
             unmatched_tracks.append(track_idx)
+
+    # Duyệt qua từng cặp (row, col)
     for row, col in indices:
         track_idx = track_indices[row]
         detection_idx = detection_indices[col]
+        # Kiểm tra xem chi phí có vượt quá max_distance không
         if cost_matrix[row, col] > max_distance:
             unmatched_tracks.append(track_idx)
             unmatched_detections.append(detection_idx)
         else:
             matches.append((track_idx, detection_idx))
+
     return matches, unmatched_tracks, unmatched_detections
+
 
 
 def matching_cascade(
