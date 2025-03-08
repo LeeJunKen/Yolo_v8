@@ -1,149 +1,64 @@
 import cv2
 import numpy as np
 from ultralytics import YOLO
+from deep_sort_realtime.deepsort_tracker import DeepSort
 
-# Import các module Deep SORT cần thiết
-# Chú ý đường dẫn phù hợp với nơi bạn đặt deep_sort
-from deep_sort.nn_matching import NearestNeighborDistanceMetric
-from deep_sort.detection import Detection
-from deep_sort.tracker import Tracker
-
-# (Tùy chọn) Nếu bạn cần trích xuất appearance feature (cho re-identification),
-# hãy sử dụng một encoder. Ví dụ, nếu dùng generate_detections.py, bạn có thể:
-# from deep_sort.tools.generate_detections import create_box_encoder
-# encoder = create_box_encoder("mars-small128.pb", batch_size=1)
-
-#################################
+############################
 # 1. Khởi tạo YOLOv8 & Deep SORT
-#################################
+############################
 
-# Khởi tạo YOLOv8 (ví dụ, mô hình YOLOv8n)
-model = YOLO("runs/detect/train5/weights/best.pt")
+# YOLOv8 - Model phát hiện (ví dụ: YOLOv8n, YOLOv8s,...)
+model = YOLO("runs/detect/train5/weights/best.pt")  # thay bằng đường dẫn hoặc model tùy ý
 
-# Thiết lập tham số cho deep sort:
-max_cosine_distance = 0.4
-nn_budget = None
-metric = NearestNeighborDistanceMetric(metric="cosine",
-                                       matching_threshold=max_cosine_distance,
-                                       budget=nn_budget)
+tracker = DeepSort(max_age=30)
+conf_threshold = 0.5
+tracking_class = 2
+cap = cv2.VideoCapture("video/test.mp4")
 
-# Khởi tạo tracker
-tracker = Tracker(metric)
+while True:
+    ret, frame = cap.read()
 
-# (Nếu có) khởi tạo hàm encoder (trích xuất appearance feature) tại đây
-# encoder = ...
+    if not ret:
+        break
 
-#################################
-# 2. Hàm chuyển YOLO bbox -> Deep SORT
-#################################
-def xyxy_to_xywh(x1, y1, x2, y2):
-    """Chuyển bounding box YOLO (x1, y1, x2, y2) -> (x, y, w, h)."""
-    w = x2 - x1
-    h = y2 - y1
-    return x1, y1, w, h
+    # #Detect
+    results = model.predict(source=frame, conf=0.3, verbose=False)
+    #
+    boxes = []
+    for r in results:
+        for box in r.boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+            # print(x1,y1,x2,y2)
+            conf = float(box.conf[0])
 
-#################################
-# 3. Vòng lặp đọc video và tracking
-#################################
-import math
-
-
-def run_tracking(video_path):
-    cap = cv2.VideoCapture(video_path)
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        # Phát hiện bằng YOLO
-        results = model.predict(source=frame, conf=0.3, verbose=False)
-        detections_yolo = []
-        confidences = []
-
-        frame_h, frame_w = frame.shape[:2]
-
-        # Lấy bounding box và confidence từ YOLO
-        for r in results:
-            for box in r.boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                conf = float(box.conf[0])
-
-                # Loại bỏ bounding box ngược hoặc bằng nhau
-                if x2 <= x1 or y2 <= y1:
+            if tracking_class is None:
+                if conf < conf_threshold:
+                    continue
+            else:
+                if conf < conf_threshold:
                     continue
 
-                # Giới hạn bbox trong kích thước frame
-                x1 = max(0, min(x1, frame_w - 1))
-                y1 = max(0, min(y1, frame_h - 1))
-                x2 = max(0, min(x2, frame_w - 1))
-                y2 = max(0, min(y2, frame_h - 1))
+            boxes.append([[x1, y1, x2-x1, y2-y1], conf, "0"])
+    tracks = tracker.update_tracks(boxes, frame=frame)
 
-                # Nếu sau clamp vẫn không hợp lệ
-                if x2 <= x1 or y2 <= y1:
-                    continue
-
-                # Kiểm tra NaN/Inf
-                if any(math.isnan(v) or math.isinf(v) for v in [x1, y1, x2, y2, conf]):
-                    continue
-
-                detections_yolo.append([x1, y1, x2, y2])
-                confidences.append(conf)
-
-        # Tạo Detection cho Deep SORT
-        ds_detections = []
-        if len(detections_yolo) > 0:
-            ds_bboxes = []
-            valid_confidences = []
-            for bbox, conf in zip(detections_yolo, confidences):
-                x1, y1, x2, y2 = bbox
-                x, y, w, h = xyxy_to_xywh(x1, y1, x2, y2)
-
-                if w <= 0 or h <= 0:
-                    continue
-
-                ds_bboxes.append([x, y, w, h])
-                valid_confidences.append(conf)
-
-            if len(ds_bboxes) > 0:
-                ds_bboxes = np.array(ds_bboxes, dtype=np.float32)
-                # Nếu chưa dùng encoder, tạm gán feature = zeros
-                features = np.zeros((len(ds_bboxes), 128), dtype=np.float32)
-
-                ds_detections = [
-                    Detection(ds_bbox, conf, feat)
-                    for ds_bbox, conf, feat in zip(ds_bboxes, valid_confidences, features)
-                ]
-
-        # Cập nhật tracker
-        tracker.predict()
-        if ds_detections:  # nếu có bbox hợp lệ
-            tracker.update(ds_detections)
-        else:
-            # Gọi update với list trống để tracker cập nhật track cũ (nếu có)
-            tracker.update([])
-
-        # Vẽ bounding box và ID
-        for track in tracker.tracks:
-            if not track.is_confirmed() or track.time_since_update > 1:
-                continue
-            bbox = track.to_tlbr()
+    for track in tracks:
+        if track.is_confirmed():
             track_id = track.track_id
 
-            x1, y1, x2, y2 = map(int, bbox)
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, f"ID: {track_id}",
-                        (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5, (0, 255, 0), 2)
+            ltrb = track.to_ltrb()
+            class_id = track.get_det_class()
+            x1, y1, x2, y2 = map(int, ltrb)
+            # color = colors[class_id]
 
-        cv2.imshow("Tracking", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            label = "0"
+            B, G, R = 0, 255, 0
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (B, G, R), 2)
+            cv2.rectangle(frame, (x1 - 1, y1 - 20), (x1 + len(label) * 12, y1), (B, G, R), -1)
+            cv2.putText(frame, label,(x1 + 5, y1-8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
-    cap.release()
-    cv2.destroyAllWindows()
+    cv2.imshow("Video", frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
-
-if __name__ == "__main__":
-    # Chạy thử trên video
-    run_tracking(r"E:\DoAn\Data\6313772697550.mp4")
+cap.release()
+cv2.destroyAllWindows()
