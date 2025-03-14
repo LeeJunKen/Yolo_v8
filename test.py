@@ -1,64 +1,85 @@
 import cv2
+import time
+import threading
+import queue
 import numpy as np
 from ultralytics import YOLO
 from deep_sort_realtime.deepsort_tracker import DeepSort
 
-############################
-# 1. Khởi tạo YOLOv8 & Deep SORT
-############################
-
-# YOLOv8 - Model phát hiện (ví dụ: YOLOv8n, YOLOv8s,...)
-model = YOLO("runs/detect/train5/weights/best.pt")  # thay bằng đường dẫn hoặc model tùy ý
-
+# Khởi tạo YOLO và DeepSort
+model = YOLO("runs/detect/train5/weights/best.pt")
 tracker = DeepSort(max_age=30)
 conf_threshold = 0.5
-tracking_class = 2
-cap = cv2.VideoCapture("video/test.mp4")
 
-while True:
-    ret, frame = cap.read()
+# Queue cho frame
+frame_queue = queue.Queue(maxsize=5)   # Giới hạn số frame trong queue để tránh tràn bộ nhớ
+result_queue = queue.Queue(maxsize=5)
 
-    if not ret:
-        break
+def frame_reader(video_path):
+    cap = cv2.VideoCapture(video_path)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame_queue.put(frame)
+    cap.release()
+    frame_queue.put(None)  # Dấu hiệu kết thúc
 
-    # #Detect
-    results = model.predict(source=frame, conf=0.3, verbose=False)
-    #
-    boxes = []
-    for r in results:
-        for box in r.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-            # print(x1,y1,x2,y2)
-            conf = float(box.conf[0])
+def detection_and_tracking():
+    while True:
+        frame = frame_queue.get()
+        if frame is None:
+            result_queue.put(None)
+            break
 
-            if tracking_class is None:
+        results = model.predict(source=frame, conf=0.3, verbose=False)
+        boxes = []
+        for r in results:
+            for box in r.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                conf = float(box.conf[0])
                 if conf < conf_threshold:
                     continue
-            else:
-                if conf < conf_threshold:
-                    continue
+                bbox = [x1, y1, x2 - x1, y2 - y1]
+                boxes.append([bbox, conf, "0"])
+        # tracks = tracker.update_tracks(boxes, frame=frame)
+        # Gắn kết quả tracking (các track đã update) vào frame để hiển thị
+        # for track in tracks:
+        #     if track.is_confirmed():
+        #         track_id = track.track_id
+        #         ltrb = track.to_ltrb()
+        #         x1, y1, x2, y2 = map(int, ltrb)
+        #         label = f"ID: {track_id}"
+        #         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        #         cv2.putText(frame, label, (x1, y1 - 10),
+        #                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        result_queue.put(frame)
 
-            boxes.append([[x1, y1, x2-x1, y2-y1], conf, "0"])
-    tracks = tracker.update_tracks(boxes, frame=frame)
+def display_results():
+    prev_time = time.time()
+    while True:
+        frame = result_queue.get()
+        if frame is None:
+            break
+        current_time = time.time()
+        fps = 1.0 / (current_time - prev_time)
+        prev_time = current_time
+        cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        cv2.imshow("Video", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cv2.destroyAllWindows()
 
-    for track in tracks:
-        if track.is_confirmed():
-            track_id = track.track_id
+# Khởi tạo các thread
+reader_thread = threading.Thread(target=frame_reader, args=("video/test.mp4",))
+detector_thread = threading.Thread(target=detection_and_tracking)
+display_thread = threading.Thread(target=display_results)
 
-            ltrb = track.to_ltrb()
-            class_id = track.get_det_class()
-            x1, y1, x2, y2 = map(int, ltrb)
-            # color = colors[class_id]
+reader_thread.start()
+detector_thread.start()
+display_thread.start()
 
-            label = "0"
-            B, G, R = 0, 255, 0
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (B, G, R), 2)
-            cv2.rectangle(frame, (x1 - 1, y1 - 20), (x1 + len(label) * 12, y1), (B, G, R), -1)
-            cv2.putText(frame, label,(x1 + 5, y1-8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
-    cv2.imshow("Video", frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+reader_thread.join()
+detector_thread.join()
+display_thread.join()
