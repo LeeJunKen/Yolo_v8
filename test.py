@@ -1,85 +1,49 @@
 import cv2
 import time
-import threading
-import queue
-import numpy as np
 from ultralytics import YOLO
-from deep_sort_realtime.deepsort_tracker import DeepSort
+from prlab.projects.FaceTracking.HungarianMatching import HungarianMatching   # hoặc từ deep_sort.HungarianMatching import HungarianMatching
 
-# Khởi tạo YOLO và DeepSort
+# Khởi tạo YOLOv8 (thay đường dẫn model nếu cần)
 model = YOLO("runs/detect/train5/weights/best.pt")
-tracker = DeepSort(max_age=30)
-conf_threshold = 0.5
+cap = cv2.VideoCapture("video/test.mp4")
 
-# Queue cho frame
-frame_queue = queue.Queue(maxsize=5)   # Giới hạn số frame trong queue để tránh tràn bộ nhớ
-result_queue = queue.Queue(maxsize=5)
+# Khởi tạo HungarianMatching
+hungarian = HungarianMatching()
 
-def frame_reader(video_path):
-    cap = cv2.VideoCapture(video_path)
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frame_queue.put(frame)
-    cap.release()
-    frame_queue.put(None)  # Dấu hiệu kết thúc
+# Biến để kiểm soát việc gọi start (frame đầu tiên) hay update (các frame sau)
+first_frame = True
 
-def detection_and_tracking():
-    while True:
-        frame = frame_queue.get()
-        if frame is None:
-            result_queue.put(None)
-            break
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
 
-        results = model.predict(source=frame, conf=0.3, verbose=False)
-        boxes = []
-        for r in results:
-            for box in r.boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                conf = float(box.conf[0])
-                if conf < conf_threshold:
-                    continue
-                bbox = [x1, y1, x2 - x1, y2 - y1]
-                boxes.append([bbox, conf, "0"])
-        # tracks = tracker.update_tracks(boxes, frame=frame)
-        # Gắn kết quả tracking (các track đã update) vào frame để hiển thị
-        # for track in tracks:
-        #     if track.is_confirmed():
-        #         track_id = track.track_id
-        #         ltrb = track.to_ltrb()
-        #         x1, y1, x2, y2 = map(int, ltrb)
-        #         label = f"ID: {track_id}"
-        #         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        #         cv2.putText(frame, label, (x1, y1 - 10),
-        #                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-        result_queue.put(frame)
+    # Dùng YOLOv8 để phát hiện khuôn mặt
+    results = model.predict(source=frame, conf=0.3, verbose=False)
+    bboxes = []
+    for r in results:
+        for box in r.boxes:
+            # Lấy bounding box dạng [x, y, x+w, y+h]
+            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+            w, h = x2 - x1, y2 - y1
+            # Nếu cần có thêm filter theo confidence...
+            bboxes.append([x1, y1, w, h])
 
-def display_results():
-    prev_time = time.time()
-    while True:
-        frame = result_queue.get()
-        if frame is None:
-            break
-        current_time = time.time()
-        fps = 1.0 / (current_time - prev_time)
-        prev_time = current_time
-        cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        cv2.imshow("Video", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-    cv2.destroyAllWindows()
+    # Nếu có detection, gọi HungarianMatching
+    if len(bboxes) > 0:
+        if first_frame:
+            key_ids = hungarian.start(frame, bboxes)
+            first_frame = False
+        else:
+            key_ids = hungarian.update(frame, bboxes)
 
-# Khởi tạo các thread
-reader_thread = threading.Thread(target=frame_reader, args=("video/test.mp4",))
-detector_thread = threading.Thread(target=detection_and_tracking)
-display_thread = threading.Thread(target=display_results)
+    # Vẽ các bounding box và nhãn từ HungarianMatching
+    hungarian.draw_bboxes(frame)
 
-reader_thread.start()
-detector_thread.start()
-display_thread.start()
+    # (Tùy chọn) Hiển thị FPS
+    cv2.imshow("Tracking", frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
-reader_thread.join()
-detector_thread.join()
-display_thread.join()
+cap.release()
+cv2.destroyAllWindows()
