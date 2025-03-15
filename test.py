@@ -1,47 +1,65 @@
 import cv2
-import time
 from ultralytics import YOLO
-from prlab.projects.FaceTracking.HungarianMatching import HungarianMatching   # hoặc từ deep_sort.HungarianMatching import HungarianMatching
+import numpy as np
+from deep_sort.deep.feature_extractor import Extractor
+from deep_sort.tracker import Tracker
+from deep_sort.nn_matching import NearestNeighborDistanceMetric
+from deep_sort.detection import Detection
 
-# Khởi tạo YOLOv8 (thay đường dẫn model nếu cần)
-model = YOLO("runs/detect/train5/weights/best.pt")
+# Load YOLOv8 face detection model
+model = YOLO('runs/detect/train5/weights/best.pt')
+
+# Initialize Deep SORT embedding extractor
+extractor = Extractor('deep_sort/deep/checkpoint/ckpt.t7')
+
+# Initialize Deep SORT tracker
+metric = NearestNeighborDistanceMetric("cosine", matching_threshold=0.7)
+tracker = Tracker(metric)
+
+# Video input (webcam hoặc video file)
 cap = cv2.VideoCapture("video/test.mp4")
-
-# Khởi tạo HungarianMatching
-hungarian = HungarianMatching()
-
-# Biến để kiểm soát việc gọi start (frame đầu tiên) hay update (các frame sau)
-first_frame = True
 
 while True:
     ret, frame = cap.read()
     if not ret:
         break
 
-    # Dùng YOLOv8 để phát hiện khuôn mặt
-    results = model.predict(source=frame, conf=0.3, verbose=False)
-    bboxes = []
-    for r in results:
-        for box in r.boxes:
-            # Lấy bounding box dạng [x, y, x+w, y+h]
-            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-            w, h = x2 - x1, y2 - y1
-            # Nếu cần có thêm filter theo confidence...
-            bboxes.append([x1, y1, w, h])
+    # Detect faces
+    results = model.predict(frame, conf=0.5)[0]
 
-    # Nếu có detection, gọi HungarianMatching
-    if len(bboxes) > 0:
-        if first_frame:
-            key_ids = hungarian.start(frame, bboxes)
-            first_frame = False
-        else:
-            key_ids = hungarian.update(frame, bboxes)
+    detections = []
 
-    # Vẽ các bounding box và nhãn từ HungarianMatching
-    hungarian.draw_bboxes(frame)
+    for bbox in results.boxes:
+        x, y, w, h = map(int, bbox.xywh[0])
+        x1, y1 = max(0, x - w // 2), max(0, y - h // 2)
+        face_img = frame[y1:y1 + h, x1:x1 + w]
 
-    # (Tùy chọn) Hiển thị FPS
-    cv2.imshow("Tracking", frame)
+        if face_img.size == 0:
+            continue
+
+        # Extract embedding
+        embedding = extractor([face_img])[0]
+
+        # Create Detection
+        detection = Detection([x1, y1, w, h], bbox.conf.item(), embedding)
+        detections.append(detection)
+
+    # Update tracker
+    tracker.predict()
+    tracker.update(detections)
+
+    # Display tracking results
+    for track in tracker.tracks:
+        if not track.is_confirmed() or track.time_since_update > 1:
+            continue
+        track_id = track.track_id
+        x1, y1, x2, y2 = map(int, track.to_tlbr())
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.putText(frame, f'ID: {track_id}', (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    cv2.imshow('YOLOv8 + Deep SORT Face Tracking', frame)
+
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
