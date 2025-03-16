@@ -35,7 +35,7 @@ def detect_faces_yolo(frame):
     Sử dụng YOLO để phát hiện khuôn mặt trong một frame.
     Trả về danh sách bounding boxes [(x1, y1, x2, y2, conf)].
     """
-    results = model.predict(source=frame, conf=0.3, verbose=False)
+    results = model.predict(source=frame, conf=0.3)
     boxes = []
     for r in results:
         for box in r.boxes:
