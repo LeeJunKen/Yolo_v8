@@ -8,23 +8,24 @@ from deep_sort.nn_matching import NearestNeighborDistanceMetric
 from deep_sort.detection import Detection
 
 model = YOLO('runs/detect/train5/weights/best.pt')
-
 extractor = Extractor('deep_sort/deep/checkpoint/ckpt.t7')
 
 metric = NearestNeighborDistanceMetric("cosine", matching_threshold=0.7)
 tracker = Tracker(metric, max_age=30)
 
-
-
 def color_histogram(image, bins=(8, 8, 8)):
-    # Chuyển sang hệ màu HSV (để ổn định với ánh sáng)
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     hist = cv2.calcHist([hsv], [0, 1, 2], None, bins, [0, 180, 0, 256, 0, 256])
     hist = cv2.normalize(hist, hist).flatten()
     return hist
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture("video/test.mp4")
 processing_width = 320
+
+# Video Writer setup
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+out = cv2.VideoWriter('output_tracking.mp4', fourcc, 20.0, (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+
 fps_start_time = time.time()
 frame_count = 0
 fps = 0
@@ -51,14 +52,7 @@ while True:
             continue
 
         face_img_resized = cv2.resize(face_img, (64, 128))
-
-        # Extract embedding (CNN embedding)
-        # embedding_cnn = extractor([face_img_resized])[0]
-
-        # Color Histogram
         embedding_hist = color_histogram(face_img_resized)
-
-        # combined_embedding = np.hstack((embedding_cnn, embedding_hist))
 
         detections.append(Detection([x1, y1, w, h], bbox.conf.item(), embedding_hist))
 
@@ -76,7 +70,7 @@ while True:
         cv2.putText(frame, f'ID: {track_id}', (x1, y1 - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-    # FPS
+    # FPS calculation
     frame_count += 1
     elapsed_time = time.time() - fps_start_time
     if elapsed_time >= 1.0:
@@ -84,13 +78,20 @@ while True:
         frame_count = 0
         fps_start_time = time.time()
 
-    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    # cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30),
+    #             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-    cv2.imshow('YOLOv8 + Deep SORT Face Tracking', frame)
+    # Write output video
+    if 'out' not in locals():
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter('tracking_output.mp4', fourcc, 20.0, (frame.shape[1], frame.shape[0]))
+    out.write(frame)
+
+    # cv2.imshow('YOLOv8 + Deep SORT Face Tracking', frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
+out.release()
 cv2.destroyAllWindows()
