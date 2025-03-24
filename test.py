@@ -52,7 +52,13 @@ while True:
             continue
 
         face_img_resized = cv2.resize(face_img, (64, 128))
+        # Extract embedding (CNN embedding)
+        embedding_cnn = extractor([face_img_resized])[0]
+
+        # Color Histogram
         embedding_hist = color_histogram(face_img_resized)
+
+        combined_embedding = np.hstack((embedding_cnn, embedding_hist))
 
         detections.append(Detection([x1, y1, w, h], bbox.conf.item(), embedding_hist))
 
