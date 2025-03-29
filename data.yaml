@@ -1,7 +1,7 @@
 # Nội dung file data.yaml
 path:
-train: F:\TaiLieuDoAn\Yolo\Yolo\SCUT_HEAD_DATASET\images\train
-val: F:\TaiLieuDoAn\Yolo\Yolo\SCUT_HEAD_DATASET\images\val
+train: F:\TaiLieuDoAn\Yolo_v8\SCUT_HEAD_DATASET_1\images\train
+val: F:\TaiLieuDoAn\Yolo_v8\SCUT_HEAD_DATASET_1\images\test
 
 nc: 1
 names: ['person']
