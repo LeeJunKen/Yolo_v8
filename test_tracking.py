@@ -3,14 +3,17 @@ from ultralytics import YOLO
 import numpy as np
 import time
 import motmetrics as mm
+import pandas as pd
 from deep_sort.deep.feature_extractor import Extractor
 from deep_sort.tracker import Tracker
 from deep_sort.nn_matching import NearestNeighborDistanceMetric
 from deep_sort.detection import Detection
 
-model = YOLO('runs/detect/train3/weights/best.pt')
+# Load YOLOv8 model và Deep SORT extractor
+model = YOLO('runs/detect/train5/weights/best.pt')
 extractor = Extractor('deep_sort/deep/checkpoint/ckpt.t7')
 
+# Khởi tạo Deep SORT Tracker
 metric = NearestNeighborDistanceMetric("cosine", matching_threshold=0.5)
 tracker = Tracker(metric, max_age=30)
 
@@ -20,17 +23,43 @@ def color_histogram(image, bins=(8, 8, 8)):
     hist = cv2.normalize(hist, hist).flatten()
     return hist
 
+def load_mot_gt(gt_path):
+    """
+    Hàm load dữ liệu Ground Truth của MOT từ file txt.
+    Định dạng dự kiến mỗi dòng:
+    frame, id, x, y, w, h, conf, class, visibility
+    Trả về: dictionary với key là frame number và value là danh sách (id, [x1, y1, x2, y2])
+    """
+    df = pd.read_csv(gt_path, header=None)
+    df.columns = ["frame", "id", "x", "y", "w", "h", "conf", "class", "vis"]
+    gt_dict = {}
+    for _, row in df.iterrows():
+        frame_num = int(row["frame"])
+        # Chuyển đổi bounding box từ (x, y, w, h) sang (x1, y1, x2, y2)
+        x1 = row["x"]
+        y1 = row["y"]
+        x2 = x1 + row["w"]
+        y2 = y1 + row["h"]
+        if frame_num not in gt_dict:
+            gt_dict[frame_num] = []
+        gt_dict[frame_num].append((int(row["id"]), [x1, y1, x2, y2]))
+    return gt_dict
+
+# Load GT từ MOT dataset (update đường dẫn cho phù hợp)
+gt_dict = load_mot_gt(r"E:\DoAn\Data\MOT20Labels\MOT20Labels\train\MOT20-01\gt\gt.txt")
+
 cap = cv2.VideoCapture(r"E:\DoAn\Data\MOT20.webm")
 processing_width = 320
 
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter('output_tracking.mp4', fourcc, 20.0, (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+out = cv2.VideoWriter('output_tracking.mp4', fourcc, 20.0,
+                      (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                       int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
 
 fps_start_time = time.time()
 frame_count = 0
-fps = 0
 
-# Setup motmetrics
+# Thiết lập motmetrics accumulator
 acc = mm.MOTAccumulator(auto_id=True)
 frame_idx = 0
 
@@ -48,9 +77,12 @@ while True:
     detections = []
     pred_boxes, pred_ids = [], []
 
+    # Xử lý các detection từ YOLO
     for bbox in results.boxes:
         x, y, w, h = map(int, bbox.xywh[0])
-        x1, y1 = max(0, x - w // 2), max(0, y - h // 2)
+        # Chuyển tọa độ từ tâm sang góc trên-trái
+        x1 = max(0, x - w // 2)
+        y1 = max(0, y - h // 2)
         face_img = frame_resized[y1:y1 + h, x1:x1 + w]
 
         if face_img.size == 0:
@@ -66,13 +98,14 @@ while True:
     tracker.predict()
     tracker.update(detections)
 
-    scale_ratio = width / processing_width
+    # Tỷ lệ scale từ frame đã resize về kích thước ban đầu
+    scale_ratio_back = width / processing_width
 
     for track in tracker.tracks:
         if not track.is_confirmed() or track.time_since_update > 1:
             continue
         track_id = track.track_id
-        x1, y1, x2, y2 = map(int, track.to_tlbr() * scale_ratio)
+        x1, y1, x2, y2 = map(int, track.to_tlbr() * scale_ratio_back)
         pred_boxes.append([x1, y1, x2, y2])
         pred_ids.append(track_id)
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -87,22 +120,25 @@ while True:
         frame_count = 0
         fps_start_time = time.time()
 
-    # cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30),
-    #             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    # Ghi frame vào video kết quả
+    out.write(frame)
 
-    # Ghi video kết quả
-    # out.write(frame)
+    # Cập nhật MOT metrics cho frame hiện tại
+    current_frame = frame_idx + 1  # GT frame thường bắt đầu từ 1
+    if current_frame in gt_dict:
+        gt_data = gt_dict[current_frame]
+        gt_ids = [entry[0] for entry in gt_data]
+        gt_boxes = [entry[1] for entry in gt_data]
+    else:
+        gt_ids = []
+        gt_boxes = []
 
-    # (Cần dữ liệu GT để tính chính xác)
-    # gt_ids = []
-    # gt_boxes = []
-    # distance_matrix = mm.distances.iou_matrix(gt_boxes, pred_boxes, max_iou=0.5)
-    # acc.update(gt_ids, pred_ids, distance_matrix)
+    distance_matrix = mm.distances.iou_matrix(gt_boxes, pred_boxes, max_iou=0.5)
+    acc.update(gt_ids, pred_ids, distance_matrix)
 
     frame_idx += 1
 
     cv2.imshow('YOLOv8 + Deep SORT Face Tracking', frame)
-
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
@@ -110,7 +146,7 @@ cap.release()
 out.release()
 cv2.destroyAllWindows()
 
-# Hiển thị kết quả tracking metrics
-# mh = mm.metrics.create()
-# summary = mh.compute(acc, metrics=['mota', 'motp', 'idf1', 'num_switches'], name='YOLO_DeepSORT')
-# print(summary)
+# Tính toán và hiển thị các chỉ số tracking
+mh = mm.metrics.create()
+summary = mh.compute(acc, metrics=['mota', 'motp', 'idf1', 'num_switches', 'recall', 'precision'], name='YOLO_DeepSORT')
+print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
