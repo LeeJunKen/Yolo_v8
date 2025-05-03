@@ -4,15 +4,13 @@ import numpy as np
 import time
 import motmetrics as mm
 import pandas as pd
-from deep_sort.deep.feature_extractor import Extractor
 from deep_sort.tracker import Tracker
 from deep_sort.nn_matching import NearestNeighborDistanceMetric
 from deep_sort.detection import Detection
 
 # Load YOLOv8 model và Deep SORT extractor
-model = YOLO('runs/detect/train5/weights/best.pt')
-extractor = Extractor('deep_sort/deep/checkpoint/ckpt.t7')
-
+model = YOLO('runs/detect/train3/weights/best.pt')
+orb = cv2.ORB_create(nfeatures=256)
 # Khởi tạo Deep SORT Tracker
 metric = NearestNeighborDistanceMetric("cosine", matching_threshold=0.5)
 tracker = Tracker(metric, max_age=30)
@@ -22,7 +20,26 @@ def color_histogram(image, bins=(8, 8, 8)):
     hist = cv2.calcHist([hsv], [0, 1, 2], None, bins, [0, 180, 0, 256, 0, 256])
     hist = cv2.normalize(hist, hist).flatten()
     return hist
+def orb_embedding(face_img):
+    """
+    face_img: ảnh BGR chứa khuôn mặt đã crop
+    Trả về: vector embedding cố định (float32)
+    """
+    # Chuyển sang gray
+    gray = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
 
+    # Phát hiện keypoints + tính descriptors
+    keypoints, descriptors = orb.detectAndCompute(gray, None)
+    if descriptors is None or len(descriptors)==0:
+        # Không có descriptor, có thể trả về vector zeros
+        return np.zeros(orb.descriptorSize(), dtype=np.float32)
+
+    # Pooling: mean của tất cả descriptors
+    # Chuyển về float32 để chính xác hơn
+    descriptors = descriptors.astype(np.float32)
+    embedding = descriptors.mean(axis=0)  # shape = (32,)
+
+    return embedding
 def load_mot_gt(gt_path):
     """
     Hàm load dữ liệu Ground Truth của MOT từ file txt.
@@ -46,9 +63,9 @@ def load_mot_gt(gt_path):
     return gt_dict
 
 # Load GT từ MOT dataset (update đường dẫn cho phù hợp)
-gt_dict = load_mot_gt(r"E:\DoAn\Data\MOT20Labels\MOT20Labels\train\MOT20-01\gt\gt.txt")
+gt_dict = load_mot_gt(r"E:\DoAn\Data\gt.txt")
 
-cap = cv2.VideoCapture(r"E:\DoAn\Data\MOT20.webm")
+cap = cv2.VideoCapture(r"E:\DoAn\Data\test_class.mp4")
 processing_width = 320
 
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -88,12 +105,14 @@ while True:
         if face_img.size == 0:
             continue
 
-        face_img_resized = cv2.resize(face_img, (64, 128))
-        embedding_cnn = extractor([face_img_resized])[0]
-        embedding_hist = color_histogram(face_img_resized)
-        combined_embedding = np.hstack((embedding_cnn, embedding_hist))
 
+        face_img_resized = cv2.resize(face_img, (64, 128))
+        embedding_cnn = orb_embedding(face_img_resized)
+
+        embedding_hist = color_histogram(face_img_resized)
+        combined_embedding = np.hstack((embedding_hist))
         detections.append(Detection([x1, y1, w, h], bbox.conf.item(), combined_embedding))
+
 
     tracker.predict()
     tracker.update(detections)
@@ -148,5 +167,5 @@ cv2.destroyAllWindows()
 
 # Tính toán và hiển thị các chỉ số tracking
 mh = mm.metrics.create()
-summary = mh.compute(acc, metrics=['mota', 'motp', 'idf1', 'num_switches', 'recall', 'precision'], name='YOLO_DeepSORT')
+summary = mh.compute(acc, metrics=['num_false_positives','num_switches','num_fragmentations','idf1','precision','recall','mota','motp','mostly_tracked','mostly_lost'], name='YOLO_DeepSORT')
 print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
