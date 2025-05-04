@@ -121,7 +121,7 @@ while True:
     scale_ratio_back = width / processing_width
 
     for track in tracker.tracks:
-        if not track.is_confirmed() or track.time_since_update > 1:
+        if not track.is_confirmed() or track.time_since_update >= 3:
             continue
         track_id = track.track_id
         x1, y1, x2, y2 = map(int, track.to_tlbr() * scale_ratio_back)
