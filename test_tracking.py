@@ -10,10 +10,48 @@ from deep_sort.detection import Detection
 
 # Load YOLOv8 model và Deep SORT extractor
 model = YOLO('runs/detect/train3/weights/best.pt')
+model_emotion = YOLO('runs/classify/train8/weights/best.pt')
 orb = cv2.ORB_create(nfeatures=256)
 # Khởi tạo Deep SORT Tracker
 metric = NearestNeighborDistanceMetric("cosine", matching_threshold=0.5)
 tracker = Tracker(metric, max_age=30)
+
+class EmotionDetection(Detection):
+    def __init__(self, tlwh, confidence, feature, emotion):
+        super().__init__(tlwh, confidence, feature)
+        self.emotion = emotion
+
+def predict_emotion(image, imgsz=224, device=0):
+    """
+    Dự đoán cảm xúc, trả về (idx, label, confidence)
+    idx: số lớp (0-6)
+    label: tên lớp tương ứng
+    confidence: xác suất
+    """
+    CLASS_NAMES = [
+        "Surprise",  # 0
+        "Fear",  # 1
+        "Disgust",  # 2
+        "Happiness",  # 3
+        "Sadness",  # 4
+        "Anger",  # 5
+        "Neutral"  # 6
+    ]
+
+    # Predict
+    results = model_emotion.predict(source=image, imgsz=imgsz, verbose=False)
+    if not results:
+        raise RuntimeError("Model không trả về kết quả.")
+    r = results[0]
+
+    # Lấy index và confidence từ Probs
+    idx = int(r.probs.top1)         # ví dụ 3
+    conf = float(r.probs.top1conf)  # ví dụ 0.87
+
+    # Map sang nhãn
+    label = CLASS_NAMES[idx]        # ví dụ "Happiness"
+
+    return label, conf
 
 def color_histogram(image, bins=(8, 8, 8)):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -65,11 +103,12 @@ def load_mot_gt(gt_path):
 # Load GT từ MOT dataset (update đường dẫn cho phù hợp)
 gt_dict = load_mot_gt(r"E:\DoAn\Data\gt.txt")
 
-cap = cv2.VideoCapture(r"E:\DoAn\Data\test_class.mp4")
+# r"E:\DoAn\Data\test_class.mp4"
+cap = cv2.VideoCapture(0)
 processing_width = 320
 
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter('output_tracking.mp4', fourcc, 20.0,
+out = cv2.VideoWriter('output_tracking.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS),
                       (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
                        int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
 
@@ -91,6 +130,7 @@ while True:
 
     results = model.predict(frame_resized, conf=0.5, verbose=False)[0]
 
+
     detections = []
     pred_boxes, pred_ids = [], []
 
@@ -101,6 +141,8 @@ while True:
         x1 = max(0, x - w // 2)
         y1 = max(0, y - h // 2)
         face_img = frame_resized[y1:y1 + h, x1:x1 + w]
+        emotion = predict_emotion(face_img)
+
 
         if face_img.size == 0:
             continue
@@ -111,24 +153,30 @@ while True:
 
         embedding_hist = color_histogram(face_img_resized)
         combined_embedding = np.hstack((embedding_hist))
-        detections.append(Detection([x1, y1, w, h], bbox.conf.item(), combined_embedding))
+        det = EmotionDetection([x1, y1, w, h], float(bbox.conf), combined_embedding, emotion[0])
+        detections.append(det)
 
 
     tracker.predict()
     tracker.update(detections)
 
+    for det, track in zip(detections, tracker.tracks):
+        track.emotion = det.emotion
+
     # Tỷ lệ scale từ frame đã resize về kích thước ban đầu
     scale_ratio_back = width / processing_width
 
     for track in tracker.tracks:
-        if not track.is_confirmed() or track.time_since_update >= 3:
+        if not track.is_confirmed() or track.time_since_update > 1:
             continue
+        print(track)
         track_id = track.track_id
+        emotion = track.emotion
         x1, y1, x2, y2 = map(int, track.to_tlbr() * scale_ratio_back)
         pred_boxes.append([x1, y1, x2, y2])
         pred_ids.append(track_id)
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(frame, f'ID: {track_id}', (x1, y1 - 10),
+        cv2.putText(frame, f'ID: {track_id}_{emotion}', (x1, y1 - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     # Tính FPS
