@@ -25,7 +25,6 @@ np.int = int
 VIDEO_PATH          = r"E:\DoAn\Data\6313772697550.mp4"
 YOLO_FACE_WEIGHTS   = r"runs/detect/train3/weights/best.pt"
 DESCRIPTOR_MODEL    = r"deep_sort/mars-small128.pb"
-DESCRIPTOR_URL      = 'https://github.com/nwojke/deep_sort/raw/master/resources/networks/mars-small128.pb'
 MIN_CONFIDENCE      = 0.3
 MAX_COSINE_DISTANCE = 0.5
 NN_BUDGET           = 200
@@ -36,10 +35,6 @@ OUTPUT_VIDEO = "output_deepsort_result.mp4"
 OUTPUT_CSV   = "deepsort_track_log.csv"
 # -------------------
 
-def ensure_descriptor():
-    if not os.path.exists(DESCRIPTOR_MODEL):
-        os.makedirs(os.path.dirname(DESCRIPTOR_MODEL), exist_ok=True)
-        urllib.request.urlretrieve(DESCRIPTOR_URL, DESCRIPTOR_MODEL)
 
 def verify_files():
     for path, desc in [
@@ -51,7 +46,7 @@ def verify_files():
             sys.exit(1)
 
 def main():
-    ensure_descriptor()
+
     verify_files()
 
     cap = cv2.VideoCapture(VIDEO_PATH)
@@ -119,7 +114,7 @@ def main():
             tid = tr.track_id
             active_ids.append(tid)
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), 2)
-            cv2.putText(frame, f"ID{tid}", (x1, y1-10),
+            cv2.putText(frame, f"ID_{tid}", (x1, y1-10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 2)
 
         ts = time.strftime("%H:%M:%S", time.localtime())
