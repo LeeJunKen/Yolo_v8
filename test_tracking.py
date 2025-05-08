@@ -11,7 +11,6 @@ from deep_sort.detection import Detection
 from YOLO import *
 
 # Load YOLOv8 model và Deep SORT extractor
-
 orb = cv2.ORB_create(nfeatures=256)
 # Khởi tạo Deep SORT Tracker
 metric = NearestNeighborDistanceMetric("cosine", matching_threshold=0.5)
@@ -71,10 +70,10 @@ def load_mot_gt(gt_path):
     return gt_dict
 
 # Load GT từ MOT dataset (update đường dẫn cho phù hợp)
-gt_dict = load_mot_gt(r"E:\DoAn\Data\Tracking_1\gt.txt")
+# gt_dict = load_mot_gt(r"gt.txt")
 
 # r"E:\DoAn\Data\test_class.mp4"
-cap = cv2.VideoCapture(r"E:\DoAn\Data\Tracking_1\video.mp4")
+cap = cv2.VideoCapture(0)
 processing_width = 320
 
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -161,19 +160,19 @@ while True:
 
     # Cập nhật MOT metrics cho frame hiện tại
     current_frame = frame_idx + 1  # GT frame thường bắt đầu từ 1
-    if current_frame in gt_dict:
-        gt_data = gt_dict[current_frame]
-        gt_ids = [entry[0] for entry in gt_data]
-        gt_boxes = [entry[1] for entry in gt_data]
-        print(gt_boxes)
-        for box in gt_boxes:
-            cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 0, 250), 2)
-    else:
-        gt_ids = []
-        gt_boxes = []
+    # if current_frame in gt_dict:
+    #     gt_data = gt_dict[current_frame]
+    #     gt_ids = [entry[0] for entry in gt_data]
+    #     gt_boxes = [entry[1] for entry in gt_data]
+    #     print(gt_boxes)
+    #     for box in gt_boxes:
+    #         cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 0, 250), 2)
+    # else:
+    #     gt_ids = []
+    #     gt_boxes = []
 
-    distance_matrix = mm.distances.iou_matrix(gt_boxes, pred_boxes, max_iou=0.5)
-    acc.update(gt_ids, pred_ids, distance_matrix)
+    # distance_matrix = mm.distances.iou_matrix(gt_boxes, pred_boxes, max_iou=0.5)
+    # acc.update(gt_ids, pred_ids, distance_matrix)
 
     frame_idx += 1
 

@@ -13,7 +13,7 @@ from ultralytics import YOLO
 from sort import Sort
 
 # --- Cấu hình ---
-VIDEO_PATH        = r"E:\DoAn\Data\6313772697550.mp4"
+VIDEO_PATH        = r"test_class.mp4"
 YOLO_FACE_WEIGHTS = r"runs/detect/train3/weights/best.pt"
 MIN_CONFIDENCE    = 0.3
 

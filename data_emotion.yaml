@@ -1,0 +1,9 @@
+# Đếm số folder con trong train → nc
+nc: 7
+
+# Danh sách tên lớp theo thứ tự folder (1→7). Edit thành tên thực nếu cần:
+names: ["Surprise", "Fear", "Disgust", "Happiness", "Sadness", "Anger", "Neutral"]
+
+# Đường dẫn đến thư mục train và val
+train: F:\TaiLieuDoAn\Yolo_v8\RAF-DB\test
+val:   F:\TaiLieuDoAn\Yolo_v8\RAF-DB\train
