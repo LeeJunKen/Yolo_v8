@@ -1,5 +1,7 @@
 import cv2
 import os
+
+from torchvision.utils import save_image
 from ultralytics import YOLO
 import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
@@ -349,10 +351,15 @@ def main():
 
     # Dự đoán trên dữ liệu test
     results = model.predict(
-        source="e.jpg",  # Thư mục chứa ảnh test
-        save=False,  # Lưu kết quả
-        imgsz=640,  # Kích thước ảnh
-        conf=0.5  # Ngưỡng confidence
+        source=r"d.jpg",  # Thư mục chứa ảnh test
+        save_txt=True,
+        save_conf=True,
+        save_crop=True,
+        save=True,
+        project="yolo_preds",
+        name="predict",
+        imgsz=640,
+        conf=0.5
     )
     print("Dự đoán hoàn tất. Kết quả đã được lưu trong thư mục 'runs/detect/predict'")
 
@@ -398,6 +405,40 @@ def draw_box():
     plt.grid(True)
     plt.savefig("results_metrics.png", dpi=300, bbox_inches='tight')
     plt.show()
+def draw_loss():
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    file_path = r"runs/detect/train3/results.csv"
+    df = pd.read_csv(file_path)
+
+    plt.figure(figsize=(10, 6))
+
+    # Các cột cần vẽ
+    loss_columns = {
+        "train/box_loss": "Train Box Loss",
+        "train/cls_loss": "Train Class Loss",
+        "train/dfl_loss": "Train DFL Loss",
+        "val/box_loss": "Val Box Loss",
+        "val/cls_loss": "Val Class Loss",
+        "val/dfl_loss": "Val DFL Loss"
+    }
+
+    for col, label in loss_columns.items():
+        if col in df.columns:
+            linestyle = '--' if col.startswith("val/") else '-'
+            plt.plot(df[col], label=label, linestyle=linestyle)
+
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Loss (Train & Validation) theo Epoch')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("loss_over_epoch.png", dpi=300)
+    plt.show()
+
+
 if __name__ == "__main__":
     # dataset_dir = r"F:\TaiLieuDoAn\Yolo_v8\SCUT_HEAD_DATASET_1\labels\train"  # Đường dẫn đến thư mục chứa ảnh của SCUT-HEAD
     # num_images = count_images_in_dataset(dataset_dir)
@@ -422,3 +463,6 @@ if __name__ == "__main__":
     # print(metrics)
     main()
     # draw_box()
+    # draw_loss()
+
+

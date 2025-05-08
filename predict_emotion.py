@@ -14,7 +14,7 @@ CLASS_NAMES = [
 ]
 
 # 2. Load model classification đã huấn luyện
-cls_model = YOLO("runs/classify/train8/weights/best.pt")
+cls_model = YOLO("runs/classify/train9/weights/best.pt")
 
 def predict_emotion(image_input, model=cls_model, imgsz=224, device=0):
     """
