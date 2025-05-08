@@ -1,5 +1,5 @@
 import cv2
-from ultralytics import YOLO
+
 import numpy as np
 import time
 import motmetrics as mm
@@ -8,9 +8,10 @@ from deep_sort.tracker import Tracker
 from deep_sort.nn_matching import NearestNeighborDistanceMetric
 from deep_sort.detection import Detection
 
+from YOLO import *
+
 # Load YOLOv8 model và Deep SORT extractor
-model = YOLO('runs/detect/train3/weights/best.pt')
-model_emotion = YOLO('runs/classify/train8/weights/best.pt')
+
 orb = cv2.ORB_create(nfeatures=256)
 # Khởi tạo Deep SORT Tracker
 metric = NearestNeighborDistanceMetric("cosine", matching_threshold=0.5)
@@ -21,37 +22,6 @@ class EmotionDetection(Detection):
         super().__init__(tlwh, confidence, feature)
         self.emotion = emotion
 
-def predict_emotion(image, imgsz=224, device=0):
-    """
-    Dự đoán cảm xúc, trả về (idx, label, confidence)
-    idx: số lớp (0-6)
-    label: tên lớp tương ứng
-    confidence: xác suất
-    """
-    CLASS_NAMES = [
-        "Surprise",  # 0
-        "Fear",  # 1
-        "Disgust",  # 2
-        "Happiness",  # 3
-        "Sadness",  # 4
-        "Anger",  # 5
-        "Neutral"  # 6
-    ]
-
-    # Predict
-    results = model_emotion.predict(source=image, imgsz=imgsz, verbose=False)
-    if not results:
-        raise RuntimeError("Model không trả về kết quả.")
-    r = results[0]
-
-    # Lấy index và confidence từ Probs
-    idx = int(r.probs.top1)         # ví dụ 3
-    conf = float(r.probs.top1conf)  # ví dụ 0.87
-
-    # Map sang nhãn
-    label = CLASS_NAMES[idx]        # ví dụ "Happiness"
-
-    return label, conf
 
 def color_histogram(image, bins=(8, 8, 8)):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -128,7 +98,7 @@ while True:
     scale_ratio = processing_width / width
     frame_resized = cv2.resize(frame, (processing_width, int(height * scale_ratio)))
 
-    results = model.predict(frame_resized, conf=0.5, verbose=False)[0]
+    results = predict_face(frame_resized, conf=0.5, verbose=False)
 
 
     detections = []
@@ -141,12 +111,12 @@ while True:
         x1 = max(0, x - w // 2)
         y1 = max(0, y - h // 2)
         face_img = frame_resized[y1:y1 + h, x1:x1 + w]
-        emotion = predict_emotion(face_img)
+
 
 
         if face_img.size == 0:
             continue
-
+        emotion = predict_emotion(face_img)
 
         face_img_resized = cv2.resize(face_img, (64, 128))
         embedding_cnn = orb_embedding(face_img_resized)
