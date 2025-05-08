@@ -101,10 +101,10 @@ def load_mot_gt(gt_path):
     return gt_dict
 
 # Load GT từ MOT dataset (update đường dẫn cho phù hợp)
-gt_dict = load_mot_gt(r"E:\DoAn\Data\gt.txt")
+gt_dict = load_mot_gt(r"E:\DoAn\Data\Tracking_1\gt.txt")
 
 # r"E:\DoAn\Data\test_class.mp4"
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(r"E:\DoAn\Data\Tracking_1\video.mp4")
 processing_width = 320
 
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -114,7 +114,7 @@ out = cv2.VideoWriter('output_tracking.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS),
 
 fps_start_time = time.time()
 frame_count = 0
-
+video_start_time = time.time()
 # Thiết lập motmetrics accumulator
 acc = mm.MOTAccumulator(auto_id=True)
 frame_idx = 0
@@ -152,7 +152,7 @@ while True:
         embedding_cnn = orb_embedding(face_img_resized)
 
         embedding_hist = color_histogram(face_img_resized)
-        combined_embedding = np.hstack((embedding_hist))
+        combined_embedding = np.hstack((embedding_cnn,embedding_hist))
         det = EmotionDetection([x1, y1, w, h], float(bbox.conf), combined_embedding, emotion[0])
         detections.append(det)
 
@@ -169,7 +169,6 @@ while True:
     for track in tracker.tracks:
         if not track.is_confirmed() or track.time_since_update > 1:
             continue
-        print(track)
         track_id = track.track_id
         emotion = track.emotion
         x1, y1, x2, y2 = map(int, track.to_tlbr() * scale_ratio_back)
@@ -188,7 +187,7 @@ while True:
         fps_start_time = time.time()
 
     # Ghi frame vào video kết quả
-    out.write(frame)
+
 
     # Cập nhật MOT metrics cho frame hiện tại
     current_frame = frame_idx + 1  # GT frame thường bắt đầu từ 1
@@ -196,6 +195,9 @@ while True:
         gt_data = gt_dict[current_frame]
         gt_ids = [entry[0] for entry in gt_data]
         gt_boxes = [entry[1] for entry in gt_data]
+        print(gt_boxes)
+        for box in gt_boxes:
+            cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 0, 250), 2)
     else:
         gt_ids = []
         gt_boxes = []
@@ -206,14 +208,22 @@ while True:
     frame_idx += 1
 
     cv2.imshow('YOLOv8 + Deep SORT Face Tracking', frame)
+    out.write(frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
 out.release()
 cv2.destroyAllWindows()
+video_end_time = time.time()
+
+# Tính tổng thời gian và FPS trung bình
+total_time = video_end_time - video_start_time
+avg_fps = frame_idx / total_time if total_time > 0 else 0.0
 
 # Tính toán và hiển thị các chỉ số tracking
 mh = mm.metrics.create()
 summary = mh.compute(acc, metrics=['num_false_positives','num_switches','num_fragmentations','idf1','precision','recall','mota','motp','mostly_tracked','mostly_lost'], name='YOLO_DeepSORT')
 print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
+
+print(f"Processed {frame_idx} frames in {total_time:.2f} seconds. Average FPS: {avg_fps:.2f}")
