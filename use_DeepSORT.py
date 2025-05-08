@@ -22,7 +22,7 @@ from deep_sort.tools import generate_detections as gdet
 np.int = int
 
 # --- Cấu hình ---
-VIDEO_PATH          = r"test_class.mp4"
+VIDEO_PATH          = r"E:\DoAn\Data\6313772697550.mp4"
 YOLO_FACE_WEIGHTS   = r"runs/detect/train3/weights/best.pt"
 DESCRIPTOR_MODEL    = r"deep_sort/mars-small128.pb"
 DESCRIPTOR_URL      = 'https://github.com/nwojke/deep_sort/raw/master/resources/networks/mars-small128.pb'
