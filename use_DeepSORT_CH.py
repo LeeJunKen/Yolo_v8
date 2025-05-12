@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Deep SORT face tracking (CNN+Histogram) + logging + xuất CSV + video
+Deep SORT face tracking (chỉ Color Histogram) + logging + xuất CSV + video
 """
 import sys, os, time, csv
 import cv2
@@ -8,37 +8,34 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 sys.modules['tensorflow'] = tf
-
 np.int = int
-
 from ultralytics import YOLO
 from deep_sort import nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
-from deep_sort.tools import generate_detections as gdet
 
 # --- CẤU HÌNH ---
-VIDEO_PATH        = r"E:\DoAn\Data\video_2.mp4"
-YOLO_WEIGHTS      = r"runs/detect/train3/weights/best.pt"
-DESCRIPTOR_MODEL  = r"deep_sort/mars-small128.pb"
-MIN_CONFIDENCE    = 0.3
-MAX_COSINE_DIST   = 0.5
-NN_BUDGET         = 200
-MAX_AGE           = 30
-N_INIT            = 3
-OUTPUT_VIDEO      = "out_combined.mp4"
-OUTPUT_CSV        = "log_combined.csv"
+VIDEO_PATH     = r"E:\DoAn\Data\video_2.mp4"
+YOLO_WEIGHTS   = r"runs/detect/train3/weights/best.pt"
+MIN_CONFIDENCE = 0.3
+MAX_COSINE_DIST= 0.5
+NN_BUDGET      = 200
+MAX_AGE        = 200
+N_INIT         = 3
+OUTPUT_VIDEO   = "out_hist.mp4"
+OUTPUT_CSV     = "log_hist.csv"
 # -----------------
 
 def verify_files():
-    for p, d in [(VIDEO_PATH,"Video"), (YOLO_WEIGHTS,"YOLO"), (DESCRIPTOR_MODEL,"MARS")]:
+    for p, d in [(VIDEO_PATH,"Video"), (YOLO_WEIGHTS,"YOLO")]:
         if not os.path.exists(p):
             print(f"{d} not found: {p}"); sys.exit(1)
 
 def color_histogram(image, bins=(8,8,8)):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     hist = cv2.calcHist([hsv],[0,1,2],None,bins,[0,180,0,256,0,256])
-    return cv2.normalize(hist, hist).flatten()
+    hist = cv2.normalize(hist,hist).flatten()
+    return hist
 
 def main():
     verify_files()
@@ -51,7 +48,6 @@ def main():
     csv_f = open(OUTPUT_CSV,'w',newline='',encoding='utf-8'); writer=csv.writer(csv_f)
     writer.writerow(["frame","timestamp","fps","num_tracks","track_ids"])
 
-    encoder = gdet.create_box_encoder(DESCRIPTOR_MODEL, batch_size=32)
     metric  = nn_matching.NearestNeighborDistanceMetric("cosine", MAX_COSINE_DIST, NN_BUDGET)
     tracker = Tracker(metric, max_age=MAX_AGE, n_init=N_INIT)
     yolo    = YOLO(YOLO_WEIGHTS)
@@ -77,14 +73,12 @@ def main():
                 bboxes.append([int(x1),int(y1),int(x2)-int(x1),int(y2)-int(y1)])
                 scores.append(float(c))
 
-        cnn_feats = encoder(frame, bboxes) if bboxes else []
         dets=[]
-        for (x,y,w_,h_), conf, f_cnn in zip(bboxes, scores, cnn_feats):
+        for (x,y,w_,h_), conf in zip(bboxes,scores):
             crop = frame[y:y+h_, x:x+w_]
             if crop.size==0: continue
             hist = color_histogram(crop)
-            combined = np.hstack((f_cnn, hist))
-            dets.append(Detection([x,y,w_,h_], conf, combined))
+            dets.append(Detection([x,y,w_,h_], conf, hist))
 
         tracker.predict(); tracker.update(dets)
 
@@ -101,7 +95,7 @@ def main():
         ts = time.strftime("%H:%M:%S", time.localtime())
         writer.writerow([frame_idx,ts,f"{fps:.2f}",len(active),";".join(map(str,active))])
         out_vid.write(frame)
-        cv2.imshow("CNN + Hist", frame)
+        cv2.imshow("Hist Only", frame)
         if cv2.waitKey(1)&0xFF==ord('q'): break
 
     cap.release(); out_vid.release(); csv_f.close(); cv2.destroyAllWindows()

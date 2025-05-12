@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" version="26.2.5" pages="3">
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36" version="27.0.3" pages="4">
   <diagram name="Tracking method" id="fMOE4yF5TCbxFFfARxoB">
     <mxGraphModel dx="1509" dy="620" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -193,6 +193,17 @@
         </mxCell>
         <mxCell id="qkNv5t8iWUQ12N_8rRjx-5" value="Cập nhật track" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="840" y="60" width="120" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="K2hmMW1t90WVXn43VkOe" name="Trang-4">
+    <mxGraphModel dx="1426" dy="777" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="F_NWl9DXvLT37LH4IY2j-1" value="&lt;p class=&quot;MsoNormal&quot;&gt;&lt;span class=&quot;VerbatimChar&quot;&gt;&lt;span style=&quot;font-size:11.0pt;&#xa;mso-bidi-font-size:12.0pt&quot;&gt;Input Image → [Conv + ReLU + Pool]*N → Flatten →&#xa;[Dense + ReLU]*M → Dense + Softmax → Prediction&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="110" y="110" width="380" height="80" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
