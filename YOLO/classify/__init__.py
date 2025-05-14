@@ -9,8 +9,9 @@ def predict_emotion(image, imgsz=224, device=0):
     """
     CLASS_NAMES = [
         "Surprise",  # 0
-        "Happiness",  # 3
-        "Sadness",  # 4
+        "Happiness",  # 1
+        "Sadness",  # 2
+        "Neutral" #3
     ]
 
     # Predict

@@ -5,7 +5,7 @@ from ultralytics import YOLO
 def main():
     model=YOLO("yolo11n-cls.pt")
     results = model.train(
-        data="F:\TaiLieuDoAn\Yolo_v8\RAF-DB-Cus",    # dict from YAML
+        data=r"F:\TaiLieuDoAn\RAF-DB-Cus",    # dict from YAML
         epochs=50,         # number of epochs
         imgsz=224,         # image size for classification
         batch=32,          # batch size
