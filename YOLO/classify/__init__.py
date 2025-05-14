@@ -1,5 +1,5 @@
 from ultralytics import YOLO
-model = YOLO('runs/classify/train8/weights/best.pt')
+model = YOLO('runs/classify/train_emotion_cus/weights/best.pt')
 def predict_emotion(image, imgsz=224, device=0):
     """
     Dự đoán cảm xúc, trả về (idx, label, confidence)
@@ -9,12 +9,8 @@ def predict_emotion(image, imgsz=224, device=0):
     """
     CLASS_NAMES = [
         "Surprise",  # 0
-        "Fear",  # 1
-        "Disgust",  # 2
         "Happiness",  # 3
         "Sadness",  # 4
-        "Anger",  # 5
-        "Neutral"  # 6
     ]
 
     # Predict
