@@ -15,7 +15,6 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 import motmetrics as mm
 import pandas as pd
-from YOLO import *
 
 # --- CẤU HÌNH ---
 VIDEO_PATH     = r"Tracking\video.mp4"
@@ -97,14 +96,10 @@ def main():
         for (x,y,w_,h_), conf in zip(bboxes,scores):
             crop = frame[y:y+h_, x:x+w_]
             if crop.size==0: continue
-            emotion = predict_emotion(crop)
             hist = color_histogram(crop)
-            dets.append(Detection([x,y,w_,h_], conf, hist, emotion[0]))
+            dets.append(Detection([x,y,w_,h_], conf, hist))
 
         tracker.predict(); tracker.update(dets)
-
-        for det, track in zip(dets, tracker.tracks):
-            track.emotion = det.emotion
 
         active=[]
         pred_boxes = []
@@ -114,10 +109,9 @@ def main():
             x1,y1,x2,y2 = tr.to_tlbr().astype(int)
             pred_boxes.append([x1, y1, x2, y2])
             pred_ids.append(tr.track_id)
-            emotion = track.emotion
             tid=tr.track_id; active.append(tid)
             cv2.rectangle(frame,(x1,y1),(x2,y2),(0,255,0),2)
-            cv2.putText(frame,f"ID_{tid}_{emotion}",(x1,y1-10),
+            cv2.putText(frame,f"ID_{tid}",(x1,y1-10),
                         cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,0),2)
         cv2.putText(frame, f"Frame: {frame_idx}", (0, 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
