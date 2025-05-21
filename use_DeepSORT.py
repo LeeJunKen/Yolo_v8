@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """
 Deep SORT face tracking (CNN+Histogram) + logging + xuất CSV + video + MOT metrics
+Hiển thị Instant FPS và Average FPS trực tiếp lên frame
 """
 import sys, os, time, csv
 import cv2
@@ -23,12 +24,13 @@ import motmetrics as mm
 VIDEO_PATH        = r"Tracking\video.mp4"
 GT_PATH           = r"Tracking\gt.txt"           # đường dẫn GT
 YOLO_WEIGHTS      = r"runs/detect/train_detection/weights/best.pt"
-DESCRIPTOR_MODEL  = r"deep_sort/mars-small128.pb"
-MIN_CONFIDENCE    = 0.3
-MAX_COSINE_DIST   = 0.5
-NN_BUDGET         = 200
-MAX_AGE           = 30
-N_INIT            = 3
+DESCRIPTOR_MODEL  = r"deep_sort\mars-small128.pb"
+MIN_CONFIDENCE = 0.3
+MAX_COSINE_DIST = 0.5
+NN_BUDGET = 50
+MAX_AGE = 9999
+N_INIT = 3
+DETECT_INTERVAL   = 3
 OUTPUT_VIDEO      = "out_combined.mp4"
 OUTPUT_CSV        = "log_combined.csv"
 # -----------------
@@ -64,7 +66,7 @@ def color_histogram(image, bins=(8,8,8)):
 def main():
     verify_files()
 
-    # --- Load GT và khởi tạo accumulator motmetrics ---
+    # Load GT và khởi tạo accumulator motmetrics
     gt_dict = load_mot_gt(GT_PATH)
     acc = mm.MOTAccumulator(auto_id=True)
 
@@ -74,21 +76,31 @@ def main():
 
     w, h     = int(cap.get(3)), int(cap.get(4))
     fps_in   = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    out_vid  = cv2.VideoWriter(OUTPUT_VIDEO,
-                               cv2.VideoWriter_fourcc(*"mp4v"),
-                               fps_in, (w,h))
+    out_vid  = cv2.VideoWriter(
+        OUTPUT_VIDEO,
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        fps_in, (w,h)
+    )
     csv_f    = open(OUTPUT_CSV, 'w', newline='', encoding='utf-8')
     writer   = csv.writer(csv_f)
-    writer.writerow(["frame","timestamp","fps","num_tracks","track_ids"])
+    # Thêm trường avg_fps
+    writer.writerow([
+        "frame","timestamp","inst_fps","avg_fps",
+        "num_tracks","track_ids"
+    ])
 
-    # --- Khởi tạo tracker + encoder + detector ---
+    # Khởi tạo tracker + encoder + detector
     encoder = gdet.create_box_encoder(DESCRIPTOR_MODEL, batch_size=32)
     metric  = nn_matching.NearestNeighborDistanceMetric(
-        "cosine", MAX_COSINE_DIST, NN_BUDGET)
+        "cosine", MAX_COSINE_DIST, NN_BUDGET
+    )
     tracker = Tracker(metric, max_age=MAX_AGE, n_init=N_INIT)
     yolo    = YOLO(YOLO_WEIGHTS)
 
-    prev_t, frame_idx = time.time(), 0
+    prev_t     = time.time()
+    start_t    = prev_t
+    frame_idx  = 0
+    dets_cache = []
 
     while True:
         ret, frame = cap.read()
@@ -97,42 +109,48 @@ def main():
         frame_idx += 1
 
         # Tính FPS
-        now = time.time()
-        fps = 1.0/(now-prev_t) if now!=prev_t else fps_in
-        prev_t = now
+        now      = time.time()
+        inst_fps = 1.0/(now - prev_t) if now != prev_t else fps_in
+        prev_t   = now
+        elapsed  = now - start_t
+        avg_fps  = frame_idx/elapsed if elapsed > 0 else 0.0
 
-        # YOLO detection
-        preds   = yolo(frame, conf=MIN_CONFIDENCE, verbose=False)
-        results = preds[0] if preds else None
-        bboxes, scores = [], []
-        if results and hasattr(results, 'boxes'):
-            xyxy  = results.boxes.xyxy.cpu().numpy()
-            confs = results.boxes.conf.cpu().numpy()
-            for (x1,y1,x2,y2), c in zip(xyxy, confs):
-                if c < MIN_CONFIDENCE:
+        # Detect mỗi DETECT_INTERVAL frame
+        if frame_idx % DETECT_INTERVAL == 1:
+            preds   = yolo(frame, conf=MIN_CONFIDENCE, verbose=False)
+            results = preds[0] if preds else None
+            bboxes, scores = [], []
+            if results and hasattr(results, 'boxes'):
+                xyxy  = results.boxes.xyxy.cpu().numpy()
+                confs = results.boxes.conf.cpu().numpy()
+                for (x1,y1,x2,y2), c in zip(xyxy, confs):
+                    if c < MIN_CONFIDENCE:
+                        continue
+                    bboxes.append([
+                        int(x1), int(y1),
+                        int(x2)-int(x1), int(y2)-int(y1)
+                    ])
+                    scores.append(float(c))
+
+            cnn_feats = encoder(frame, bboxes) if bboxes else []
+            dets_cache = []
+            for (x,y,w_,h_), conf, f_cnn in zip(bboxes, scores, cnn_feats):
+                crop = frame[y:y+h_, x:x+w_]
+                if crop.size == 0:
                     continue
-                bboxes.append([int(x1), int(y1), int(x2)-int(x1), int(y2)-int(y1)])
-                scores.append(float(c))
-
-        # Extract CNN features
-        cnn_feats = encoder(frame, bboxes) if bboxes else []
-
-        # Build detections with combined feature
-        dets = []
-        for (x,y,w_,h_), conf, f_cnn in zip(bboxes, scores, cnn_feats):
-            crop = frame[y:y+h_, x:x+w_]
-            if crop.size == 0:
-                continue
-            hist     = color_histogram(crop)
-            combined = np.hstack((f_cnn, hist))
-            dets.append(Detection([x,y,w_,h_], conf, combined))
+                hist     = color_histogram(crop)
+                combined = np.hstack((f_cnn, hist))
+                dets_cache.append(
+                    Detection([x,y,w_,h_], conf, combined)
+                )
 
         # Tracking
         tracker.predict()
-        tracker.update(dets)
+        tracker.update(dets_cache)
 
-        # Vẽ tracks & lưu pred list
-        active_ids, pred_boxes = [], []
+        # Vẽ tracks & thu thập thông tin
+        active_ids = []
+        pred_boxes = []
         for tr in tracker.tracks:
             if not tr.is_confirmed() or tr.time_since_update != 0:
                 continue
@@ -140,27 +158,45 @@ def main():
             tid = tr.track_id
             active_ids.append(tid)
             pred_boxes.append([x1,y1,x2,y2])
-            cv2.rectangle(frame, (x1,y1), (x2,y2), (0,255,0), 2)
-            cv2.putText(frame, f"ID_{tid}", (x1,y1-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 2)
+            cv2.rectangle(frame, (x1,y1),(x2,y2), (0,255,0), 2)
+            cv2.putText(
+                frame, f"ID_{tid}", (x1,y1-10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 2
+            )
 
         # Ghi log CSV
         ts = time.strftime("%H:%M:%S", time.localtime())
-        writer.writerow([frame_idx, ts, f"{fps:.2f}",
-                         len(active_ids), ";".join(map(str,active_ids))])
+        writer.writerow([
+            frame_idx, ts,
+            f"{inst_fps:.2f}", f"{avg_fps:.2f}",
+            len(active_ids), ";".join(map(str,active_ids))
+        ])
 
-        # --- Cập nhật motmetrics accumulator ---
+        # Cập nhật motmetrics accumulator
         gt_entries = gt_dict.get(frame_idx, [])
-        gt_ids   = [e[0] for e in gt_entries]
-        gt_boxes = [e[1] for e in gt_entries]
+        gt_ids     = [e[0] for e in gt_entries]
+        gt_boxes   = [e[1] for e in gt_entries]
         if gt_boxes and pred_boxes:
-            iou = mm.distances.iou_matrix(gt_boxes, pred_boxes, max_iou=0.5)
+            iou = mm.distances.iou_matrix(
+                gt_boxes, pred_boxes, max_iou=0.5
+            )
         else:
-            iou = np.zeros((len(gt_ids), len(pred_boxes)), dtype=float)
-
+            iou = np.zeros(
+                (len(gt_ids), len(pred_boxes)), dtype=float
+            )
         acc.update(gt_ids, active_ids, iou)
 
-        # Ghi video và hiển thị
+        # Hiển thị FPS trên frame
+        cv2.putText(
+            frame, f"Inst FPS: {inst_fps:.1f}", (10, 20),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2
+        )
+        cv2.putText(
+            frame, f"Avg FPS: {avg_fps:.1f}", (10, 50),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2
+        )
+
+        # Ghi video & show
         out_vid.write(frame)
         cv2.imshow("CNN + Hist Tracking", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -172,14 +208,11 @@ def main():
     csv_f.close()
     cv2.destroyAllWindows()
 
-    # --- Tính MOT metrics & in summary ---
+    # Tính MOT metrics & in summary
     mh = mm.metrics.create()
     summary = mh.compute(
         acc,
-        metrics=[
-            'num_frames','mota','motp','idf1',
-            'num_switches','num_fragmentations'
-        ],
+        metrics=['num_frames', 'mota', 'idf1','precision','recall','motp',  'num_switches', 'num_fragmentations'],
         name='cnn_hist'
     )
     print(mm.io.render_summary(
@@ -187,8 +220,8 @@ def main():
         formatters=mh.formatters,
         namemap=mm.io.motchallenge_metric_names
     ))
-
     print(f"Saved {OUTPUT_VIDEO}, {OUTPUT_CSV}")
+    print(f"Total frames: {frame_idx}, Overall Avg FPS: {avg_fps:.2f}")
 
 if __name__=="__main__":
     main()
