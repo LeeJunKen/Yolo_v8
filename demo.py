@@ -61,7 +61,7 @@ class VideoTracker:
             cv2.putText(vis, f"ID: {tr.track_id}", (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             crop = frame[y1:y2, x1:x2]
-            emotion = "Neutral"  # TODO: thay bằng model emotion thật
+            emotion = "Neutral"
             faces.append((crop, tr.track_id, emotion))
 
         cv2.putText(vis, f"Inst FPS: {inst_fps:.1f}", (10, 20),

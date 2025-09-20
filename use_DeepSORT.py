@@ -31,8 +31,8 @@ NN_BUDGET = 50
 MAX_AGE = 9999
 N_INIT = 3
 DETECT_INTERVAL   = 3
-OUTPUT_VIDEO      = "out_combined.mp4"
-OUTPUT_CSV        = "log_combined.csv"
+OUTPUT_VIDEO      = "results/out_combined.mp4"
+OUTPUT_CSV        = "results/log_combined.csv"
 # -----------------
 
 def verify_files():

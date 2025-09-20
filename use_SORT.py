@@ -29,8 +29,8 @@ MIN_HITS      = 3
 MAX_AGE       = 30
 DETECT_INTERVAL   = 3
 # Đường dẫn output
-OUTPUT_VIDEO = "output_sort_result.mp4"
-OUTPUT_CSV   = "track_ids_log.csv"
+OUTPUT_VIDEO = "results/output_sort_result.mp4"
+OUTPUT_CSV   = "results/track_ids_log.csv"
 # -------------------
 
 def verify_files():
