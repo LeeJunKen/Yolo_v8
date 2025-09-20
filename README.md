@@ -40,7 +40,7 @@ Hệ thống giám sát lớp học theo thời gian thực với 3 chức năng
 - **Phát hiện khuôn mặt:** mAP@0.5 = 0.942  
 - **Theo dõi (Deep SORT):** MOTA = 96.1%, IDF1 = 96.8%  
 - **Nhận diện cảm xúc:** Top-1 Accuracy ≈ 91%  
-- **Tốc độ xử lý:** ~13 FPS
+- **Tốc độ xử lý:** ~30 FPS (RTX 5060)
 
 ## 📂 Cấu trúc thư mục
 ```bash
