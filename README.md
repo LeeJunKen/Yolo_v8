@@ -57,4 +57,22 @@ Yolo_v8/
 │── requirements.txt       # Các thư viện cần thiết
 │── README.md              # Giới thiệu dự án
 
+```
+## 📖 Hướng phát triển
+- Tích hợp multi-camera.
+- Nâng cao tốc độ để đạt ≥ 25 FPS trên CPU.
+- Mở rộng phân loại cảm xúc với nhiều trạng thái hơn.
+- Kết hợp phân tích hành vi học sinh dựa trên pose estimation.
+
+## 👨‍🎓 Tác giả
+**Khóa luận tốt nghiệp – Trường Đại học Sài Gòn, 2025.**
+- Tống Đức Duy
+- Lê Trung Kiên
+
+
+## 📚 Tài liệu tham khảo
+- YOLO: [Redmon et al., 2016]
+- Deep SORT: [Wojke et al., 2017]
+- SCUT-HEAD Dataset
+- RAF-DB Dataset
 
