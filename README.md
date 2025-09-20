@@ -45,14 +45,16 @@ Hệ thống giám sát lớp học theo thời gian thực với 3 chức năng
 ## 📂 Cấu trúc thư mục
 ```bash
 Yolo_v8/
-│── data/              # Bộ dữ liệu huấn luyện & test
-│── models/            # Pretrained & trained weights
-│── src/               # Mã nguồn chính
-│   ├── detection/     # YOLOv8 detection
-│   ├── tracking/      # Deep SORT + Hungarian Matching
-│   └── emotion/       # Emotion recognition
-│── results/           # Kết quả thực nghiệm
-│── requirements.txt   # Các thư viện cần thiết
-│── README.md          # Giới thiệu dự án
+│── deep_sort/             # Thuật toán Deep Sort
+│── Tracking/              # File MOT và Video kiểm thử
+│── runs/                  # Pretrained & trained weights
+│── results/               # Kết quả thực nghiệm
+│── demo.py                # Ứng dụng demo về nhận diện và theo dõi
+│── use_DeepSORT.py        # Trích xuất đặc trưng bằng Color Histogram và CNN
+│── use_DeepSORT_CH.py     # Trích xuất đặc trưng bằng Color Histogram
+│── use_DeepSORT_CNN.py    # Trích xuất đặc trưng bằng CNN
+│── use_SORT.py            # Áp dụng thuật toán SORT
+│── requirements.txt       # Các thư viện cần thiết
+│── README.md              # Giới thiệu dự án
 
 
